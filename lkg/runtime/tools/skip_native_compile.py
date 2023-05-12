@@ -37,7 +37,13 @@ def compile(stack, args):
     # Run skip_to_native to generate our .o file
     objFile = stack.enter_context(common.tmpfile('tmp.gen_object.', '.o'))
 
-    SKFLAGS = tuple([x for x in [x for x in CFLAGS if x.startswith(('-m', '-f', '-W', '-g', '-O'))] if not x.startswith('-Wl,')])
+    SKFLAGS = tuple(
+        x
+        for x in [
+            x for x in CFLAGS if x.startswith(('-m', '-f', '-W', '-g', '-O'))
+        ]
+        if not x.startswith('-Wl,')
+    )
 
     PROFILE_FLAGS = ('--profile', args.profile) if args.profile else ()
 
@@ -71,9 +77,9 @@ def compile(stack, args):
         if os.path.isdir(x):
             return os.path.join(x, 'testhelper.cpp')
         else:
-            return os.path.splitext(x)[0] + '_testhelper.cpp'
-    cppSrcs = tuple(
-        [x for x in map(testCpp, args.srcs) if os.path.isfile(x)])
+            return f'{os.path.splitext(x)[0]}_testhelper.cpp'
+
+    cppSrcs = tuple(x for x in map(testCpp, args.srcs) if os.path.isfile(x))
     sk_standalone = (
         args.sk_standalone or
         os.path.join(source_dir, 'runtime/native/src/sk_standalone.cpp'))

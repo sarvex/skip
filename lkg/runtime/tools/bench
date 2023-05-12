@@ -55,7 +55,7 @@ def main(stack):
         annotation='bench',
         delegate_function='Bencher.main')
 
-    logger.debug("Generated main() script at %s)" % (sk_main))
+    logger.debug(f"Generated main() script at {sk_main})")
 
     env = os.environ.copy()
 
@@ -65,7 +65,7 @@ def main(stack):
     minIterations = ['--min-iterations', args.min_iterations] if args.min_iterations else []
     itersPerGc = ['--iters-per-gc', args.iters_per_gc] if args.iters_per_gc else []
 
-    backend_gen = common.fullBackendGen('skip_{}_exec'.format(args.backend))
+    backend_gen = common.fullBackendGen(f'skip_{args.backend}_exec')
 
     cmd = (
         [backend_gen, common.prelude()]

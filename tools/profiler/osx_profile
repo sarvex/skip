@@ -44,7 +44,7 @@ def main(stack):
     output.close()
 
     if args.exists and not os.path.exists('/'.join(args.program)):
-        exit('Properly named executable does not exist for: ' + program)
+        exit(f'Properly named executable does not exist for: {program}')
 
     target = os.path.abspath(program)
     flags = ' '.join(remainder)

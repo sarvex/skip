@@ -16,7 +16,7 @@ def main():
     samples = {}
     for file in files:
         try:
-            with open(args.input + '/' + file, 'r') as f:
+            with open(f'{args.input}/{file}', 'r') as f:
                 samples[file] = json.load(f)
         except OSError:
             pass

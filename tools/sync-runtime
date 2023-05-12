@@ -10,12 +10,12 @@ backupDir = None
 
 
 def enumFiles(root):
-    res = set(os.path.relpath(os.path.join(dirpath, f), root)
-              for (dirpath, dirnames, filenames) in os.walk(root)
-              for f in filenames
-              if not f.endswith('.pyc')
-              )
-    return res
+    return {
+        os.path.relpath(os.path.join(dirpath, f), root)
+        for (dirpath, dirnames, filenames) in os.walk(root)
+        for f in filenames
+        if not f.endswith('.pyc')
+    }
 
 
 def mkdir(path):
@@ -25,9 +25,7 @@ def mkdir(path):
         if e.errno == 2: # parent doesn't exist?
             mkdir(os.path.dirname(path))
             os.mkdir(path)
-        elif e.errno == 17: # file exists
-            pass
-        else:
+        elif e.errno != 17:
             raise
 
 
@@ -47,7 +45,7 @@ def backup(path):
         backupDir = src
         mkdir(backupDir)
 
-        print("(Original files backed up to %s)" % (pipes.quote(backupDir),))
+        print(f"(Original files backed up to {pipes.quote(backupDir)})")
 
     backupFile = os.path.join(backupDir, os.path.relpath(path, root))
     mkdir(os.path.dirname(backupFile))
@@ -78,7 +76,7 @@ def main():
             dst = os.path.join(target, f)
             backup(dst)
             os.unlink(dst)
-        print("Deleted %s" % (pipes.quote(f),))
+        print(f"Deleted {pipes.quote(f)}")
 
     # Copy new files
     for f in sorted(srcs - dsts):
@@ -86,7 +84,7 @@ def main():
         dst = os.path.join(target, f)
         if not args.dry_run:
             shutil.copy(src, dst)
-        print("Copied %s" % (pipes.quote(f),))
+        print(f"Copied {pipes.quote(f)}")
 
     # Diff everything else
     for f in sorted(srcs & dsts):
@@ -96,7 +94,7 @@ def main():
             if not args.dry_run:
                 backup(dst)
                 shutil.copy(src, dst)
-            print("Replaced %s" % (pipes.quote(f),))
+            print(f"Replaced {pipes.quote(f)}")
 
 
 main()

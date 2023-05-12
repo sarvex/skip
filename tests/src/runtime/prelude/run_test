@@ -55,7 +55,7 @@ def main(stack):
         delegate_function='UnitTest.main',
         rebuild=False)
 
-    logger.debug("Generated main() script at %s)" % (sk_main))
+    logger.debug(f"Generated main() script at {sk_main})")
 
     env = os.environ.copy()
 

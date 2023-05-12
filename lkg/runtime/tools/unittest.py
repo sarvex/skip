@@ -59,7 +59,7 @@ def build_main_file(
             cmd, env=os.environ, stdout=mainFile, stderr=subprocess.PIPE
         )
         if returncode != 0:
-            print("Failed to load annotations - check the project file for `%s`." % (program))
+            print(f"Failed to load annotations - check the project file for `{program}`.")
             exit(1)
         mainFile.flush()
 
@@ -100,7 +100,7 @@ def main(stack):
         if args.watch:
             cmd += ("--watch",)
     else:
-        print("Uknown backend %s" % (args.backend))
+        print(f"Uknown backend {args.backend}")
         exit(2)
 
     cmd += tuple(remainder)

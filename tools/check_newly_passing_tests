@@ -22,10 +22,7 @@ import threading
 # 15 minute timeout for each test
 MAX_CPU_LIMIT = 15 * 60
 
-FORCE_FAILING = set((
-    # This test only passes on linux
-    'src/tests/typechecking/overridable_const5.php',
-))
+FORCE_FAILING = {'src/tests/typechecking/overridable_const5.php'}
 
 
 def removeDir(dirname, dirs, path):
@@ -63,14 +60,13 @@ class ProgressWatcher(threading.Thread):
             except Exception:
                 break
 
-            m = re.search(r'\[(\d+)/(\d+)\]', x)
-            if m:
-                num = int(str(m.group(1)))
-                den = int(str(m.group(2)))
+            if m := re.search(r'\[(\d+)/(\d+)\]', x):
+                den = int(str(m[2]))
                 if den != 0:
+                    num = int(str(m[1]))
                     sys.stdout.write('\r%.2f%% (%d / %d)  ' % (num * 100.0 / den, num, den))
                     sys.stdout.flush()
-                x = x[len(m.group(0)):]
+                x = x[len(m[0]):]
             else:
                 x = x[-50:]
 
@@ -94,28 +90,25 @@ def updateTestState(root):
             backend = backend[1:]
 
             root = os.path.join(source_dir, path)
-            testFailingAll = root + '.failing'
-            testFailing = testFailingAll + '_' + backend
-            testPassing = root + '.passing_' + backend
+            testFailingAll = f'{root}.failing'
+            testFailing = f'{testFailingAll}_{backend}'
+            testPassing = f'{root}.passing_{backend}'
 
             if action == '.testok':
                 if os.path.isfile(testFailingAll):
-                    print(
-                        '%s is no longer failing all backends (passing %s)' %
-                        (path, backend))
+                    print(f'{path} is no longer failing all backends (passing {backend})')
                     os.unlink(testFailingAll)
                 if os.path.isfile(testFailing):
-                    print('%s is no longer failing on %s' % (path, backend))
+                    print(f'{path} is no longer failing on {backend}')
                     os.unlink(testFailing)
                 if backend == 'native' and not os.path.isfile(testPassing):
                     touch(testPassing)
-            else:
-                if not os.path.isfile(testFailingAll):
-                    if not os.path.isfile(testFailing):
-                        print('%s is newly failing on %s' % (path, backend))
-                        touch(testFailing)
-                    if backend == 'native' and os.path.isfile(testPassing):
-                        os.unlink(testPassing)
+            elif not os.path.isfile(testFailingAll):
+                if not os.path.isfile(testFailing):
+                    print(f'{path} is newly failing on {backend}')
+                    touch(testFailing)
+                if backend == 'native' and os.path.isfile(testPassing):
+                    os.unlink(testPassing)
 
 
 def main():

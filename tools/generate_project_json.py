@@ -16,7 +16,7 @@ def generate_project(dir, unit_name, sources, kind='Program', references=[prelud
     unit_body = {
         'kind': kind,
         'sources': sources,
-        'references': list([{'path': ref} for ref in references])
+        'references': [{'path': ref} for ref in references],
     }
     add_program_unit(project, unit_name, unit_body)
     write_project_file(dir, project)
@@ -42,7 +42,11 @@ def write_project_file(dir, project=None):
                     indent=2,
                     separators=(',', ': ')))
     except IOError as e:
-        exit('Error while opening directory "' + dir + '". Make sure you are properly specifying your project directory. Full error:\n' + str(e))
+        exit(
+            f'Error while opening directory "{dir}'
+            + '". Make sure you are properly specifying your project directory. Full error:\n'
+            + str(e)
+        )
     return project_dict
 
 
@@ -57,7 +61,7 @@ def read_project_file(dir, create_default=False):
         if create_default:
             return write_project_file(dir)
         else:
-            exit('Error while opening skip.project.json: ' + str(e))
+            exit(f'Error while opening skip.project.json: {str(e)}')
 
 
 # Add a new programUnits entry to the project
@@ -88,8 +92,8 @@ def main():
 
     dir = os.path.abspath(args.dir or os.path.dirname(args.sources[0]))
     # adjust the source/reference names to be relative to our source directory
-    sources = list([os.path.relpath(src, dir) for src in args.sources])
-    references = list([os.path.relpath(ref, dir) for ref in args.references])
+    sources = [os.path.relpath(src, dir) for src in args.sources]
+    references = [os.path.relpath(ref, dir) for ref in args.references]
     name = args.name or os.path.splitext(os.path.basename(args.sources[0]))[0]
     generate_project(dir, name, sources, args.kind, references, version=args.version)
 

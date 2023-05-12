@@ -32,11 +32,7 @@ def callHelper(cmd, env=None, **args):
     """Given a command which dumps its output to stdout, run it and if it fails
     dump the output to stderr instead.
     """
-    if env:
-        env = dict(list(os.environ.items()) + list(env.items()))
-    else:
-        env = os.environ
-
+    env = dict(list(os.environ.items()) + list(env.items())) if env else os.environ
     try:
         logger.debug('Running: ' + ' '.join(map(pipes.quote, cmd)))
         subprocess.check_call(cmd, env=env, **args)
@@ -85,8 +81,10 @@ def validate_sk_unit(unit_path):
 
     cmd = (
         os.path.join(build_dir, 'bin/skip_depends'),
-        '--binding', 'backend=' + os.environ.get("BACKEND", 'native'),
-        dir + ':' + unit_name )
+        '--binding',
+        'backend=' + os.environ.get("BACKEND", 'native'),
+        f'{dir}:{unit_name}',
+    )
     returncode = subprocess.call(cmd, env=os.environ, stdout=subprocess.PIPE)
     if (returncode != 0):
         if not isSkFile:
@@ -139,7 +137,7 @@ class Spinner(object):
     @staticmethod
     def spinning_cursor():
         while 1:
-            for cursor in '|/-\\': yield cursor
+            yield from '|/-\\'
 
     def __init__(self, delay=None):
         self.spinner_generator = self.spinning_cursor()

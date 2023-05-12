@@ -35,7 +35,7 @@ symPrefix = '_' if sys.platform == 'darwin' else ''
 # Filter out any extracted disassembly that isn't found by searching through
 # all llvm function references made starting with the files in sources
 def filterDisassembly(disasm, sources):
-    referencedFuncs = set([func for func in disasm if func[1][0][1] in sources])
+    referencedFuncs = {func for func in disasm if func[1][0][1] in sources}
     # queue of blocks to search through
     queue = collections.deque(referencedFuncs)
 
@@ -48,7 +48,7 @@ def filterDisassembly(disasm, sources):
         # get references used in first function on the queue
         symbols = symbolSet(queue.popleft()[2])
         # map those references to their functions in disasm
-        newFuncs = set([func for func in disasm if func[0] in symbols])
+        newFuncs = {func for func in disasm if func[0] in symbols}
         referencedFuncs.update(newFuncs)
         # add non-repeated references to the queue
         queue.extend([func for func in newFuncs if func not in referencedFuncs])
@@ -64,9 +64,7 @@ def cleanDisassembly(asm):
         if line.startswith('\t.loc') or line.startswith('\t.file'):
             return False
         labelMatch = re.search(labelRE, line)
-        if labelMatch:
-            return len(asm.split(labelMatch.group(1))) > 2
-        return True
+        return len(asm.split(labelMatch[1])) > 2 if labelMatch else True
 
     return '\n'.join(filter(cleanLine, asm.split('\n')))
 
@@ -95,7 +93,7 @@ def extractAsmFunctions(asm, names):
                        if not re.match(r'\s*\.cfi_', line))
 
         # Guarantee a trailing newline to be consistent.
-        funcs[name] = body if body == '' or body.endswith('\n') else body + '\n'
+        funcs[name] = body if not body or body.endswith('\n') else body + '\n'
 
     return funcs
 
@@ -138,8 +136,8 @@ def emitDisassembly(llvmFile, asmFile, output, useJSON, filterDisasm, cleanDisas
     for line in llvmFile:
         m = re.match(r';;; @disasm_(function|symbol): (.*)', line)
         if m:
-            val = ast.literal_eval(m.group(2))
-            if m.group(1) == 'function':
+            val = ast.literal_eval(m[2])
+            if m[1] == 'function':
                 # This describes an upcoming symbol.
                 skFunctions.append(val)
             else:
@@ -221,17 +219,12 @@ def which(name):
         return None
 
     path = distutils.spawn.find_executable(name)
-    if path and os.path.isfile(path):
-        return path
-
-    return None
+    return path if path and os.path.isfile(path) else None
 
 
 def findProgram(args, name, env_var, cmake_var):
     if env_var:
-        # Look for env_var (like 'CC')
-        prog = os.environ.get(env_var, None)
-        if prog:
+        if prog := os.environ.get(env_var, None):
             path = which(prog)
             if not path:
                 # If they explicitly specified the env var and it doesn't exist
@@ -252,9 +245,7 @@ def findProgram(args, name, env_var, cmake_var):
                 if os.path.isfile(path):
                     return path
 
-    # Look for the program in the PATH by name
-    path = which(name)
-    if path:
+    if path := which(name):
         return path
     logger.error('%s not found in PATH or as %s in CMakeCache.txt', name,
                  cmake_var)

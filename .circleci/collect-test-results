@@ -51,10 +51,7 @@ def printTestOutput(filename):
     if not result.checkReturnCode():
         return result, False
 
-    if result.report_diff():
-        return result, False
-
-    return result, True
+    return (result, False) if result.report_diff() else (result, True)
 
 # filename is one of filename.testok or filename.testfail
 def processTest(testsuites, filename):
@@ -73,7 +70,7 @@ def processTest(testsuites, filename):
         name=result.targetName,
     )
 
-    testcase = ET.SubElement(testsuite, 'testcase', name=result.targetName+':')
+    testcase = ET.SubElement(testsuite, 'testcase', name=f'{result.targetName}:')
     if result.timeTaken is not None:
         testcase.set('time', str(result.timeTaken))
     if passed:
@@ -116,16 +113,15 @@ def main():
         removeDir(dirname, dirs, './native/runtime')
         removeDir(dirname, dirs, './nuclide')
 
-        for name in sorted(
-                set(os.path.splitext(f)[0]
-                    for f in files
-                    if f.endswith(('.testok', '.testfail')))):
-            if name + '.testok' in files:
+        for name in sorted({os.path.splitext(f)[0] for f in files
+                            if f.endswith(('.testok', '.testfail'))}):
+            if f'{name}.testok' in files:
                 ext = '.testok'
-                if name + '.testfail' in files:
-                    print('WARNING: %s has both .testok and .testfail' % (
-                        os.path.join(dirname, name),),
-                          file=sys.stderr)
+                if f'{name}.testfail' in files:
+                    print(
+                        f'WARNING: {os.path.join(dirname, name)} has both .testok and .testfail',
+                        file=sys.stderr,
+                    )
             else:
                 ext = '.testfail'
             f = os.path.join(dirname, name + ext)
@@ -137,7 +133,7 @@ def main():
         j = '\n' + (level-1) * '  '
         if len(elem):
             if not elem.text or not elem.text.strip():
-                elem.text = i + '  '
+                elem.text = f'{i}  '
             if not elem.tail or not elem.tail.strip():
                 elem.tail = i
             for subelem in elem:

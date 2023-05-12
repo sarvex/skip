@@ -7,4 +7,4 @@ parser.add_argument('file', type=str)
 args = parser.parse_args()
 
 with open(args.file, 'w') as f:
-    f.write('%s' % (time.time(),))
+    f.write(f'{time.time()}')

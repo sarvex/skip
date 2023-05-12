@@ -25,27 +25,32 @@ TUPLE_MIN = 2
 TUPLE_MAX = 10
 
 def getZipClass(n):
-    tparams = ", ".join(("T{}".format(x) for x in range(n)))
-    args = ", ".join(("s{}: Sequence<T{}>".format(x, x) for x in range(n)))
-    values = "\n".join(("    it{} = this.s{}.values();".format(x, x)
-                        for x in range(n)))
-    nexts = ", ".join(("it{}.next()".format(x) for x in range(n)))
-    somes = ", ".join(("Some(val{})".format(x) for x in range(n)))
-    vals = ", ".join(("val{}".format(x) for x in range(n)))
-    sizes = ", ".join(("this.s{}.size()".format(x) for x in range(n)))
-    code = zipClasses.format(n=n, tparams=tparams, args=args,
-                             values=values, nexts=nexts, somes=somes, vals=vals, sizes=sizes)
-    return code
+    tparams = ", ".join(f"T{x}" for x in range(n))
+    args = ", ".join(f"s{x}: Sequence<T{x}>" for x in range(n))
+    values = "\n".join(f"    it{x} = this.s{x}.values();" for x in range(n))
+    nexts = ", ".join(f"it{x}.next()" for x in range(n))
+    somes = ", ".join(f"Some(val{x})" for x in range(n))
+    vals = ", ".join(f"val{x}" for x in range(n))
+    sizes = ", ".join(f"this.s{x}.size()" for x in range(n))
+    return zipClasses.format(
+        n=n,
+        tparams=tparams,
+        args=args,
+        values=values,
+        nexts=nexts,
+        somes=somes,
+        vals=vals,
+        sizes=sizes,
+    )
 
 
 def getZipExtension(n):
-    tparams = ", ".join(("T{}".format(x) for x in range(n)))
-    sequences = "\n".join(
-        ("    s{}: Sequence<T{}>,".format(x, x) for x in range(n)))
-    ss = ", ".join(("s{}".format(x) for x in range(n)))
-    code = zipExtensions.format(
-        n=n, tparams=tparams, sequences=sequences, ss=ss)
-    return code
+    tparams = ", ".join(f"T{x}" for x in range(n))
+    sequences = "\n".join(f"    s{x}: Sequence<T{x}>," for x in range(n))
+    ss = ", ".join(f"s{x}" for x in range(n))
+    return zipExtensions.format(
+        n=n, tparams=tparams, sequences=sequences, ss=ss
+    )
 
 
 def main():

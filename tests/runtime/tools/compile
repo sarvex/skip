@@ -44,7 +44,7 @@ def main():
 
     common.callHelper(cmd)
 
-    compile_target = 'skip_' + backend + '_compile.py'
+    compile_target = f'skip_{backend}_compile.py'
 
     print_skip_to_llvm = ('--print-skip-to-llvm',) if args.print_skip_to_llvm else ()
 

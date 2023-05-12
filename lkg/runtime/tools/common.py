@@ -52,7 +52,7 @@ try:
     GREEN = subprocess.check_output(('tput', 'setaf', '2')).decode()
     NORMAL = subprocess.check_output(('tput', 'sgr0')).decode()
 except subprocess.CalledProcessError:
-    RED, GREEN, NORMAL = (str(''), str(''), str(''))
+    RED, GREEN, NORMAL = '', '', ''
 
 
 def splitRemainder():
@@ -95,11 +95,9 @@ def commonArguments(needsBackend=True, backend=None):
 
 def updateTmpDir():
     newtmp = os.path.join(binary_dir, 'tmp')
-    try:
+    with contextlib.suppress(Exception):
         ensureDirPathExists(newtmp)
         os.environ['TMPDIR'] = newtmp
-    except Exception:
-        pass
 
 
 def fullBackendGen(backend_gen):
@@ -157,11 +155,7 @@ def callHelper(cmd, output=None, env=None, cwd=None):
     """Given a command which dumps its output to stdout, run it and if it fails
     dump the output to stderr instead.
     """
-    if env:
-        env = dict(os.environ.items() + env.items())
-    else:
-        env = os.environ
-
+    env = dict(os.environ.items() + env.items()) if env else os.environ
     try:
         logger.debug('Running: ' + ' '.join(map(pipes.quote, cmd)))
         subprocess.check_call(cmd, env=env, stdout=output, cwd=cwd)
@@ -223,10 +217,7 @@ def getShortBackend():
 
 
 def backendName(name, ext, backend):
-    if backend:
-        return '%s.%s.%s' % (name, backend, ext)
-    else:
-        return '%s.%s' % (name, ext)
+    return f'{name}.{backend}.{ext}' if backend else f'{name}.{ext}'
 
 
 def computeRelativePath(path):
@@ -236,7 +227,7 @@ def computeRelativePath(path):
             os.path.realpath(path),
             os.path.realpath(ARGS.relative))
         if not path.startswith('../'):
-            path = './' + path
+            path = f'./{path}'
     else:
         path = os.path.abspath(path)
     return path
@@ -254,11 +245,7 @@ def prelude(absolute=False):
     global _prelude
     if _prelude: return _prelude
 
-    if absolute:
-        _prelude = ARGS.prelude
-    else:
-        _prelude = computeRelativePath(ARGS.prelude)
-
+    _prelude = ARGS.prelude if absolute else computeRelativePath(ARGS.prelude)
     return _prelude
 
 
@@ -270,7 +257,7 @@ def getProjectFilePath(target):
         dir = os.path.dirname(target)
         unit = os.path.basename(target)
     rel_dir = os.path.relpath(os.path.abspath(dir), root_dir)
-    return rel_dir + ':' + unit
+    return f'{rel_dir}:{unit}'
 
 
 def isSkipFile(path):
@@ -291,7 +278,7 @@ def loadProjectFile(target, backend):
         dir = target
 
     dir = os.path.abspath(dir)
-    unit_suffix = ':' + unit_name if unit_name != '' else ''
+    unit_suffix = f':{unit_name}' if unit_name != '' else ''
 
     cmd = (
         os.path.join(build_dir, 'bin/skip_depends'),
@@ -299,11 +286,7 @@ def loadProjectFile(target, backend):
         dir + unit_suffix )
     logger.debug('Running: ' + ' '.join(map(pipes.quote, cmd)))
     returncode = subprocess.call(cmd, env=os.environ, stdout=subprocess.PIPE)
-    if (returncode != 0):
-        return None
-
-    # return /path/to/project_dir, programUnit
-    return (dir, unit_name)
+    return None if (returncode != 0) else (dir, unit_name)
 
 
 def computeTargetName(test, backend=None):
@@ -324,10 +307,9 @@ def computeTargetName(test, backend=None):
     else:
         relPath = os.path.relpath(os.path.dirname(sys.argv[0]), root_dir)
 
-    testPrefix = ('test_' + backend) if backend else 'test'
+    testPrefix = f'test_{backend}' if backend else 'test'
 
-    testTarget = testPrefix + '.' + relPath.replace('/', '.')
-    return testTarget
+    return f'{testPrefix}.' + relPath.replace('/', '.')
 
 
 logged_data = []
@@ -349,13 +331,10 @@ def _writeToPerfLog():
     obj = []
     if os.path.isfile(ARGS.profile):
         with open(ARGS.profile, 'r') as f:
-            try:
+            with contextlib.suppress(Exception):
                 obj = json.load(f)
-            except Exception:
-                pass
-
     obj += logged_data
-    tmp_output_name = ARGS.profile + '.' + str(os.getpid())
+    tmp_output_name = f'{ARGS.profile}.{os.getpid()}'
     with open(tmp_output_name, 'w') as f:
         json.dump(obj, f)
     os.rename(tmp_output_name, ARGS.profile)
@@ -417,7 +396,7 @@ class RunCommand(object):
 
         self._computeFilenames()
 
-        if os.path.exists(self.exp_name + '_failure'):
+        if os.path.exists(f'{self.exp_name}_failure'):
             self._expectError = True
 
         if not cmd:
@@ -429,9 +408,9 @@ class RunCommand(object):
         ensureDirPathExists(os.path.dirname(dst_we))
 
         with open(self.stdout_name, 'wb') as stdout, \
-             open(self.stderr_name, 'wb') as stderr, \
-             open(self.res_name, 'w') as resout, \
-             open(os.devnull, 'rb') as stdin:
+                 open(self.stderr_name, 'wb') as stderr, \
+                 open(self.res_name, 'w') as resout, \
+                 open(os.devnull, 'rb') as stdin:
             start = time.time()
             p = subprocess.Popen(
                 cmd,
@@ -577,16 +556,18 @@ class RunCommand(object):
 
     def write_file(self, name, data, limit=None):
         assert not limit or (isinstance(limit, (tuple, list)) and len(limit) == 2)
-        data = data.strip()
-        if data:
-            print('  %s%s:%s' % (RED, name, NORMAL))
+        if data := data.strip():
+            print(f'  {RED}{name}:{NORMAL}')
             if limit:
                 lines = data.split('\n')
                 if len(lines) > limit[0]:
                     lines = ['<output truncated>'] + lines[-limit[0]:]
-                lines = map(lambda x: x if (len(x) < limit[1]) else (x[:limit[1] - 3] + '...'), lines)
+                lines = map(
+                    lambda x: x if len(x) < limit[1] else f'{x[:limit[1] - 3]}...',
+                    lines,
+                )
                 data = '\n'.join(lines)
-            print('\n'.join(map(lambda x: '    ' + x, data.split('\n'))))
+            print('\n'.join(map(lambda x: f'    {x}', data.split('\n'))))
 
     def write_stdout(self, limit=MAX_ERROR_OUTPUT):
         self.write_file('stdout', self.stdout, limit=limit)
@@ -620,7 +601,7 @@ class RunCommand(object):
         if ARGS.update_baseline and not self.manual_update_baseline and not self.exp_name.endswith('.expectregex'):
             shutil.copyfile(self.stdout_name, self.exp_name)
             if not self.isFileEmpty(self.stderr_name):
-                shutil.copyfile(self.stderr_name, self.exp_name + "_err")
+                shutil.copyfile(self.stderr_name, f"{self.exp_name}_err")
             return False
 
         if not os.path.exists(self.exp_name):
@@ -630,8 +611,8 @@ class RunCommand(object):
 
         if self.diff_file(self.stdout_name, self.exp_name):
             return True
-        if os.path.exists(self.exp_name + '_err'):
-            if self.diff_file(self.stderr_name, self.exp_name + '_err'):
+        if os.path.exists(f'{self.exp_name}_err'):
+            if self.diff_file(self.stderr_name, f'{self.exp_name}_err'):
                 return True
         else:
             with open(self.stderr_name, 'r') as f:

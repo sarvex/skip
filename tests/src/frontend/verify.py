@@ -27,7 +27,7 @@ def run_test_program(files, program, lib, expect_ext):
     Run the program and return a list of Failures.
     """
     base_cmd = [program]
-    base_cmd.extend(glob.glob(lib + '/*.sk'))
+    base_cmd.extend(glob.glob(f'{lib}/*.sk'))
     def run(f):
         test_dir, test_name = os.path.split(f)
         cmd = base_cmd[:]
@@ -84,7 +84,7 @@ def dump_failures(failures):
         expected = f.expected
         actual = f.output
         diff = get_diff(f)
-        print("Details for the failed test %s:" % f.fname)
+        print(f"Details for the failed test {f.fname}:")
         print("\n>>>>>  Expected output  >>>>>>\n")
         print(expected)
         print("\n=====   Actual output   ======\n")
@@ -107,16 +107,13 @@ def files_with_ext(files, ext):
 
 def list_test_files(root, disabled_ext):
     if os.path.isfile(root):
-        if root.endswith('.sk'):
-            return [root]
-        else:
-            return []
+        return [root] if root.endswith('.sk') else []
     elif os.path.isdir(root):
         result = []
         children = os.listdir(root)
         disabled = files_with_ext(children, disabled_ext)
         for child in children:
-            if child == 'disabled' or child == 'failing' or child == 'todo':
+            if child in ['disabled', 'failing', 'todo']:
                 continue
             if child in disabled:
                 continue
@@ -129,10 +126,7 @@ def list_test_files(root, disabled_ext):
         # so ignore those.
         return []
     else:
-        raise Exception(
-            'Could not find test file or directory at %s' %
-            args.test_path
-        )
+        raise Exception(f'Could not find test file or directory at {args.test_path}')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -168,7 +162,7 @@ if __name__ == '__main__':
     dump_on_failure = args.diff
 
     if not os.path.isfile(args.program):
-        raise Exception('Could not find program at %s' % args.program)
+        raise Exception(f'Could not find program at {args.program}')
 
     files = list_test_files(args.test_path, args.disabled_extension)
     lib = args.native_lib_dir
@@ -180,7 +174,7 @@ if __name__ == '__main__':
         if dump_on_failure:
             dump_failures(failures)
         for fname in fnames:
-            print("Failed: %s" % fname)
+            print(f"Failed: {fname}")
         if len(failures) > 1:
             print("Failed %d out of %d tests." % (len(failures), total))
         sys.exit(1)
@@ -188,6 +182,6 @@ if __name__ == '__main__':
     if total == 0:
         print("No tests given")
     elif total == 1:
-        print("Passed: %s" % files[0])
+        print(f"Passed: {files[0]}")
     else:
         print("All %d tests passed!" % total)

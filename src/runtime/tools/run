@@ -50,12 +50,12 @@ def main(stack):
         if args.watch:
             cmd += ('--watch',)
     else:
-        print("Uknown backend %s" % (args.backend))
+        print(f"Uknown backend {args.backend}")
         exit(2)
 
     cmd += tuple(remainder)
     logger.debug('Running: ' + ' '.join(map(pipes.quote, cmd)))
-    with common.PerfTimer('run.' + args.backend):
+    with common.PerfTimer(f'run.{args.backend}'):
         res = subprocess.call(cmd, env=os.environ)
     if res != 0:
         sys.exit(res)

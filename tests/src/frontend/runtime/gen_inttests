@@ -6,7 +6,7 @@ import argparse
 import os
 
 def numstr(n):
-    return '"%s"' % n
+    return f'"{n}"'
 
 # Truncate a Python value to a machine type.
 def trunc(n):
@@ -17,10 +17,10 @@ def trunc(n):
     n &= 0xFFFFFFFFFFFFFFFF;
     if (n & 0x8000000000000000):
         n |= -1 << 63
-    return int(n)
+    return n
 
 def computeInterestingIntegers():
-    n = set((1 << (1 << n)) for n in range(7))
+    n = {1 << (1 << n) for n in range(7)}
     n.add(0)
     n.add(63)
 
@@ -43,7 +43,7 @@ def computeInterestingIntegers():
         n4.add(x)
         n4.add(-x)
 
-    return sorted(set(trunc(x) for x in n4))
+    return sorted({trunc(x) for x in n4})
 
 interesting = computeInterestingIntegers()
 
@@ -64,8 +64,8 @@ class Op(object):
 
         # At runtime print out a description of the mathematical operation
         # being performed, to aid debugging.
-        aArg = '" + %s + "' % aVar if aVar else str(a)
-        bArg = '" + %s + "' % bVar if bVar else str(b)
+        aArg = f'" + {aVar} + "' if aVar else str(a)
+        bArg = f'" + {bVar} + "' if bVar else str(b)
         prefix = '"' + (self.expr % (aArg, bArg)) + ': "'
         if prefix.startswith('"" + '):
             # Optimize away concatenating an empty string.
@@ -73,13 +73,13 @@ class Op(object):
 
         if not self.isDivide or (isinstance(b, int) and b != 0):
             if self.isBool:
-                print('%swriteBool(%s, %s);' % (istr, opstr, prefix), file=sk)
+                print(f'{istr}writeBool({opstr}, {prefix});', file=sk)
             else:
-                print('%swriteInt(%s, %s);' % (istr, opstr, prefix), file=sk)
+                print(f'{istr}writeInt({opstr}, {prefix});', file=sk)
         else:
             # Handle div/rem by zero.
             print('%stry {' % istr, file=sk)
-            print('%s  writeInt(%s, %s)' % (istr, opstr, prefix), file=sk)
+            print(f'{istr}  writeInt({opstr}, {prefix})', file=sk)
             print('%s} catch {' % istr, file=sk)
             print('%s  | DivisionByZeroException _ -> '
                   'print_raw(%s + "DivisionByZero\\n")' % (istr, prefix), file=sk)
@@ -88,7 +88,7 @@ class Op(object):
     def noteExpected(self, expected, a, b):
         opstr = self.expr % (a, b)
         if not self.isDivide or b != 0:
-            expected.append(opstr + ': ' + self.evaluate(a, b) + '\n')
+            expected.append(f'{opstr}: {self.evaluate(a, b)}' + '\n')
         else:
             expected.append(opstr + ': DivisionByZero\n')
 
@@ -96,41 +96,57 @@ class Op(object):
 def uns(x):
     return x & 0xFFFFFFFFFFFFFFFF
 
-ops = dict((op.name, op) for op in (
-    Op('div', '%s / %s',
-       # Python rounds integer division to minus infinity, but Skip
-       # rounds towards zero.
-       lambda a, b: ((abs(a) / abs(b)) * (-1 if a * b < 0 else 1)) if b else 0,
-       isDivide = True),
-    Op('rem', '%s %% %s',
-       # Python does modulo but we want remainder (ala C).
-       lambda a, b: ((abs(a) % abs(b)) * (-1 if a < 0 else 1)) if b else 0,
-       isDivide = True),
-    Op('add', '%s + %s',  lambda a, b: a + b),
-    Op('sub', '%s - %s',  lambda a, b: a - b),
-    Op('mul', '%s * %s',  lambda a, b: a * b),
-    Op('and', '(%s).and(%s)',  lambda a, b: a & b),
-    Op('or', '(%s).or(%s)',  lambda a, b: a | b),
-    Op('xor', '(%s).xor(%s)',  lambda a, b: a ^ b),
-    Op('shl', '(%s).shl(%s)', lambda a, b: a << (b & 63)),
-    Op('ashr', '(%s).shr(%s)', lambda a, b: a >> (b & 63)),
-    Op('lshr', '(%s).ushr(%s)',
-       lambda a, b: (a & 0xFFFFFFFFFFFFFFFF) >> (b & 63)),
-    Op('eq', '%s == %s', lambda a, b: a == b, isBool = True),
-    Op('ne', '%s != %s', lambda a, b: a != b, isBool = True),
-    Op('lt', '%s < %s',  lambda a, b: a <  b, isBool = True),
-    Op('gt', '%s > %s',  lambda a, b: a >  b, isBool = True),
-    Op('ge', '%s >= %s', lambda a, b: a >= b, isBool = True),
-    Op('le', '%s <= %s', lambda a, b: a <= b, isBool = True),
-    Op('ule', '(%s).ule(%s)', lambda a, b: uns(a) <= uns(b), isBool = True),
-    Op('ult', '(%s).ult(%s)', lambda a, b: uns(a) <  uns(b), isBool = True),
-    Op('ugt', '(%s).ugt(%s)', lambda a, b: uns(a) >  uns(b), isBool = True),
-    Op('uge', '(%s).uge(%s)', lambda a, b: uns(a) >= uns(b), isBool = True),
-))
+ops = {
+    op.name: op
+    for op in (
+        Op(
+            'div',
+            '%s / %s',
+            # Python rounds integer division to minus infinity, but Skip
+            # rounds towards zero.
+            lambda a, b: ((abs(a) / abs(b)) * (-1 if a * b < 0 else 1))
+            if b
+            else 0,
+            isDivide=True,
+        ),
+        Op(
+            'rem',
+            '%s %% %s',
+            # Python does modulo but we want remainder (ala C).
+            lambda a, b: ((abs(a) % abs(b)) * (-1 if a < 0 else 1))
+            if b
+            else 0,
+            isDivide=True,
+        ),
+        Op('add', '%s + %s', lambda a, b: a + b),
+        Op('sub', '%s - %s', lambda a, b: a - b),
+        Op('mul', '%s * %s', lambda a, b: a * b),
+        Op('and', '(%s).and(%s)', lambda a, b: a & b),
+        Op('or', '(%s).or(%s)', lambda a, b: a | b),
+        Op('xor', '(%s).xor(%s)', lambda a, b: a ^ b),
+        Op('shl', '(%s).shl(%s)', lambda a, b: a << (b & 63)),
+        Op('ashr', '(%s).shr(%s)', lambda a, b: a >> (b & 63)),
+        Op(
+            'lshr',
+            '(%s).ushr(%s)',
+            lambda a, b: (a & 0xFFFFFFFFFFFFFFFF) >> (b & 63),
+        ),
+        Op('eq', '%s == %s', lambda a, b: a == b, isBool=True),
+        Op('ne', '%s != %s', lambda a, b: a != b, isBool=True),
+        Op('lt', '%s < %s', lambda a, b: a < b, isBool=True),
+        Op('gt', '%s > %s', lambda a, b: a > b, isBool=True),
+        Op('ge', '%s >= %s', lambda a, b: a >= b, isBool=True),
+        Op('le', '%s <= %s', lambda a, b: a <= b, isBool=True),
+        Op('ule', '(%s).ule(%s)', lambda a, b: uns(a) <= uns(b), isBool=True),
+        Op('ult', '(%s).ult(%s)', lambda a, b: uns(a) < uns(b), isBool=True),
+        Op('ugt', '(%s).ugt(%s)', lambda a, b: uns(a) > uns(b), isBool=True),
+        Op('uge', '(%s).uge(%s)', lambda a, b: uns(a) >= uns(b), isBool=True),
+    )
+}
 
 
 def emitVarVar(sk, op, calls, expected):
-    funcName = 'do_%s_var_var' % op.name
+    funcName = f'do_{op.name}_var_var'
     calls.append(funcName)
     expected.append('# Starting %s\n' % funcName)
 
@@ -160,7 +176,7 @@ fun %s(testCases: Array<(Int, String)>): void {
 
 
 def emitConstVar(sk, op, calls, expected):
-    funcName = 'do_%s_const_var' % op.name
+    funcName = f'do_{op.name}_const_var'
     calls.append(funcName)
     expected.append('# Starting %s\n' % funcName)
 
@@ -189,7 +205,7 @@ fun %s(testCases: Array<(Int, String)>): void {
 
 
 def emitVarConst(sk, op, calls, expected):
-    funcName = 'do_%s_var_const' % op.name
+    funcName = f'do_{op.name}_var_const'
     calls.append(funcName)
     expected.append('# Starting %s\n' % funcName)
 
@@ -217,7 +233,7 @@ fun %s(testCases: Array<(Int, String)>): void {
 
 
 def emitConstConst(sk, op, calls, expected):
-    funcName = 'do_%s_const_const' % op.name
+    funcName = f'do_{op.name}_const_const'
     calls.append(funcName)
     expected.append('# Starting %s\n' % funcName)
 
@@ -299,9 +315,8 @@ def main():
     assert args.output_dir, '--output-dir is required'
     assert args.op, '--op is required'
 
-    name = os.path.join(args.output_dir, 'inttests-' + args.op)
-    with open(name + '.sk', 'w') as sk, \
-         open(name + '.exp', 'w') as exp:
+    name = os.path.join(args.output_dir, f'inttests-{args.op}')
+    with (open(f'{name}.sk', 'w') as sk, open(f'{name}.exp', 'w') as exp):
         generateOp(sk, exp, args.op)
 
 

@@ -44,7 +44,7 @@ def runtest(args, test, libs):
 
     expectError = '/invalid/' in test
 
-    for i in range(4):
+    for _ in range(4):
         with common.PerfTimer('run_test.RunCommand'):
             result = common.RunCommand(test, cmd, env=env, expectError=expectError)
 

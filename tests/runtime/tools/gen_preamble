@@ -91,9 +91,9 @@ extc-refs - Produces a C++ file with an array listing of all the public extern C
             line = line.replace('\n', ' ')
             line = re.sub(' +', ' ', line)
             m = re.match(r'^extern (.*)(SKIPC?_\w*)(\(.*);$', line)
-            retDecl = m.group(1).strip()
-            funName = m.group(2).strip()
-            paramDecl = m.group(3).strip()
+            retDecl = m[1].strip()
+            funName = m[2].strip()
+            paramDecl = m[3].strip()
             return (fname, retDecl, funName, paramDecl)
 
         lines = list(map(
@@ -147,7 +147,7 @@ def dumpExtcRefs(args, outfile, entrypoints):
 
     for f in sorted(entrypointsByFile.keys()):
         f = os.path.relpath(f, args.runtime_path)
-        print('#include "%s"' % (f,), file=outfile)
+        print(f'#include "{f}"', file=outfile)
 
     print(file=outfile)
 
@@ -155,9 +155,9 @@ def dumpExtcRefs(args, outfile, entrypoints):
 
     for k, v in sorted(entrypointsByFile.items()):
         print(file=outfile)
-        print("  /* %s */" % (os.path.basename(k),), file=outfile)
+        print(f"  /* {os.path.basename(k)} */", file=outfile)
         for entry in sorted(v):
-            print("  (void*)%s," % (entry,), file=outfile)
+            print(f"  (void*){entry},", file=outfile)
 
     print("};", file=outfile)
 
@@ -167,24 +167,20 @@ def dumpExtcRefs(args, outfile, entrypoints):
 # Then compile it and return the .ll produced by clang.
 def genDeclarations(args, entrypoints):
 
-    if args.ndebug:
-        ndebug = args.ndebug
-    else:
-        ndebug = False
-
+    ndebug = args.ndebug if args.ndebug else False
     with tempfile.NamedTemporaryFile(prefix='gen_preamble.',
-                                     suffix='.cpp',
-                                     mode='w',
-                                     delete=not args.keep_temp) as tmpSource:
+                                         suffix='.cpp',
+                                         mode='w',
+                                         delete=not args.keep_temp) as tmpSource:
         if args.keep_temp:
             logger.debug('(KEEPING TEMP FILE: %s)', tmpSource.name)
 
         for f in sorted({x[0] for x in entrypoints}):
-            print('#include "%s"' % (f,), file=tmpSource)
+            print(f'#include "{f}"', file=tmpSource)
 
         print('void* HACK_REFERENCES[] = {', file=tmpSource)
         for d in entrypoints:
-            print('  (void*)&%s,' % (d[2],), file=tmpSource)
+            print(f'  (void*)&{d[2]},', file=tmpSource)
 
         print('};', file=tmpSource)
 
@@ -286,15 +282,16 @@ def dumpPreamble(outfile, args, entrypoints):
         elif line.startswith('declare ') and '@' in line:
             m = re.search(r'@(SKIPC?_\w+)', line)
             if m:
-                entrypoint = m.group(1)
+                entrypoint = m[1]
                 if entrypoint not in entrypointsByName:
                     continue
                 # save the SKIP decls to emit below
                 declsByFile[entrypointsByName[entrypoint]].append(line)
                 if '(...)' in line:
-                    print("ERROR: Make sure that functions which take no " +
-                          "parameters are declared as '%s(void)'" % entrypoint,
-                          file=sys.stderr)
+                    print(
+                        f"ERROR: Make sure that functions which take no parameters are declared as '{entrypoint}(void)'",
+                        file=sys.stderr,
+                    )
                     raise RuntimeError("incorrect void function")
                 continue
 
@@ -303,7 +300,7 @@ def dumpPreamble(outfile, args, entrypoints):
             if not m:
                 print("Warning: unexpected declare: ", line)
                 continue
-            if not re.match(declRE, m.group(1)):
+            if not re.match(declRE, m[1]):
                 # if you get here, update declWhitelist.
                 print("Warning: unexpected llvm declare: ", line)
             print(orig_line, file=outfile)
@@ -331,15 +328,12 @@ def dumpPreamble(outfile, args, entrypoints):
     for fname, decls in sorted(declsByFile.items()):
         def declKey(n):
             m = re.match(r'@(\w+)', n)
-            if m:
-                return m.group(1) + n
-            else:
-                return n
+            return m[1] + n if m else n
+
         decl = sorted(decls, key=declKey)
 
         print(';', file=outfile)
-        print('; %s' % (os.path.relpath(fname, common.source_dir),),
-              file=outfile)
+        print(f'; {os.path.relpath(fname, common.source_dir)}', file=outfile)
         print(';', file=outfile)
         print("\n".join(decl), file=outfile)
         print(file=outfile)
